@@ -18,6 +18,7 @@ _ATTRIBUTES = "attributes"
 _AUTOMATION = "automation"
 _BRIGHTNESS = "brightness"
 _CLIMATE = "climate"
+_COVER = "cover"
 _DOMAIN = "domain"
 _DEVICE_TRACKER = "device_tracker"
 _ENTITY_ID = "entity_id"
@@ -40,6 +41,7 @@ _THING_TO_DOMAIN = {
     Thing.HEAT: _CLIMATE,
     Thing.AIR_CONDITIONING: _CLIMATE,
     Thing.SWITCH: _SWITCH,
+    Thing.COVER: _COVER,
 }
 
 
@@ -76,6 +78,18 @@ _DOMAINS = {
         },
         _ATTRIBUTES: {
             Attribute.TEMPERATURE,
+        },
+    },
+    _COVER: {
+        _ACTIONS: {
+            Action.INCREASE,
+            Action.DECREASE,
+            Action.UNLOCK,
+            Action.LOCK,
+            Action.STOP,
+        },
+        _ATTRIBUTES: {
+
         },
     },
     _DEVICE_TRACKER: {
@@ -208,6 +222,7 @@ class HomeAssistantSkill(CommonIoTSkill, FallbackSkill):
         return entity_id[:entity_id.index('.')]
 
     def stop(self):
+        self.log.debug("In homeassistant stop function: {}".format(self))
         pass
 
     @property
@@ -272,7 +287,7 @@ class HomeAssistantSkill(CommonIoTSkill, FallbackSkill):
         scene = request.scene
         value = request.value
         state = request.state
-
+        self.log.debug("thing : {}".format(thing))
         if scene:
             return self._can_handle_scene(scene, action, thing, entity, attribute)
 
@@ -316,6 +331,9 @@ class HomeAssistantSkill(CommonIoTSkill, FallbackSkill):
 
         if thing == Thing.SWITCH:
             return self._can_handle_switch(action, entity_id, state)
+
+        if thing == Thing.COVER:
+            return self._can_handle_cover(action, entity_id)
 
         if action == Action.LOCATE and domain == _DEVICE_TRACKER:
             return True, {'entity_id': entity_id}
@@ -441,6 +459,24 @@ class HomeAssistantSkill(CommonIoTSkill, FallbackSkill):
             return True, None
 
         return False, None
+
+    def _can_handle_cover(self, action, entity_id):
+        if action not in _DOMAINS[_COVER][_ACTIONS]:
+            return False, None
+        service = None 
+        if action in (Action.INCREASE, Action.UNLOCK):
+            service = "open_cover"
+        elif action in (Action.DECREASE, Action.LOCK):
+            service = "close_cover"
+        elif action == Action.STOP:
+            service = "stop_cover"
+        data = {_DOMAIN: _COVER, _SERVICE: service}
+        states = [dict()]
+        if entity_id:
+            states[0][_ENTITY_ID] = entity_id
+            self.log.debug("entity_id: {}".format(entity_id))
+        data[_STATES] = states
+        return True, data
 
     def _can_handle_temperature(self, action: Action, entity_id: str, attribute: Attribute, target_key=_TEMPERATURE, value=None):
         # TODO handle min/max temp values
