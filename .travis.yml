@@ -1,10 +1,12 @@
 language: python
 before_install:
-  - pip install pep8
+  - sudo apt-get update -qq
+  - pip install pycodestyle
   - pip install pytest-cov
   - pip install python-coveralls
 python:
   - "3.6"
+  - "3.7"
 script:
- - pep8 __init__.py
- - pytest --rootdir=unittests --cov unittests/
+ - pycodestyle __init__.py
+ - pytest --rootdir=test/unittests/ --cov unittests/
