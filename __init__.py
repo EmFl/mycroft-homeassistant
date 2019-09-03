@@ -1,7 +1,8 @@
 from collections import defaultdict
 
-from mycroft.skills.common_iot_skill import CommonIoTSkill,\
-    IoTRequest, IoTRequestVersion, Thing, Action, Attribute, State
+from mycroft.skills.common_iot_skill import (CommonIoTSkill, IoTRequest,
+                                             IoTRequestVersion, Thing, Action,
+                                             Attribute, State)
 from mycroft.skills.core import FallbackSkill
 from mycroft.util.log import getLogger
 
@@ -32,8 +33,6 @@ _STATES = "states"
 _SWITCH = "switch"
 _TEMPERATURE = "temperature"
 
-
-
 _THING_TO_DOMAIN = {
     Thing.LIGHT: _LIGHT,
     Thing.THERMOSTAT: _CLIMATE,
@@ -44,9 +43,9 @@ _THING_TO_DOMAIN = {
     Thing.COVER: _COVER,
 }
 
-
 _DOMAIN_TO_THING = {v: k for k, v in _THING_TO_DOMAIN.items()}
-del(_DOMAIN_TO_THING[_CLIMATE])  # Climate is ambiguous, so we remove it and use _CLIMATE_THINGS instead.
+# Climate is ambiguous, so we remove it and use _CLIMATE_THINGS instead.
+del(_DOMAIN_TO_THING[_CLIMATE])
 
 _CLIMATE_THINGS = {
     Thing.TEMPERATURE,
@@ -145,13 +144,11 @@ _DOMAINS = {
     }
 }
 
-
 _SIMPLE_ACTIONS = {
     Action.TOGGLE: "toggle",
     Action.ON: "turn_on",
     Action.OFF: "turn_off"
 }
-
 
 _MAX_BRIGHTNESS = 254
 
@@ -160,7 +157,8 @@ class HomeAssistantSkill(CommonIoTSkill, FallbackSkill):
 
     def __init__(self):
         super().__init__(name="HomeAssistantSkill")
-        self._client: HomeAssistantClient = None
+        self._client:
+            HomeAssistantClient = None
         self._entities = dict()
         self._scenes = dict()
 
@@ -250,10 +248,13 @@ class HomeAssistantSkill(CommonIoTSkill, FallbackSkill):
     def _locate(self, entity_id: str):
         state = self._client.get_states(entity_id)[0]
         name = state['attributes']['friendly_name']
-        location = state['state'].split(' - ')[-1]  # location format is: 'username device_id - zone'
-        self.speak_dialog("entity.location", {"entity": name, "location": location})
+        # location format is: 'username device_id - zone'
+        location = state['state'].split(' - ')[-1]
+        self.speak_dialog("entity.location", {
+                          "entity": name, "location": location})
 
-    def _run_binary_state_query(self, request: IoTRequest, callback_data: dict):
+    def _run_binary_state_query(self, request: IoTRequest,
+                                callback_data: dict):
         """
         Currently supports POWERED/UNPOWERED queries
         """
@@ -265,13 +266,15 @@ class HomeAssistantSkill(CommonIoTSkill, FallbackSkill):
         if status == "unavailable":
             self.speak_dialog("entity.unavailable", {"name": friendly_name})
 
-        elif ((queried_state == State.POWERED and status == "on")
-                or (queried_state == State.UNPOWERED and status == "off")):
-            self.speak_dialog('affirmative.state',{'friendly_name': friendly_name, 'state': status})
+        elif ((queried_state == State.POWERED and status == "on") or
+              (queried_state == State.UNPOWERED and status == "off")):
+            self.speak_dialog('affirmative.state', {
+                              'friendly_name': friendly_name, 'state': status})
 
-        elif ((queried_state == State.POWERED and status == "off")
-                or (queried_state == State.UNPOWERED and status == "on")):
-            self.speak_dialog('negative.state', {'friendly_name': friendly_name, 'state': status})
+        elif ((queried_state == State.POWERED and status == "off") or
+              (queried_state == State.UNPOWERED and status == "on")):
+            self.speak_dialog('negative.state', {
+                              'friendly_name': friendly_name, 'state': status})
 
         else:
             raise Exception("Unsupported state query! Queried state was"
@@ -289,13 +292,14 @@ class HomeAssistantSkill(CommonIoTSkill, FallbackSkill):
         state = request.state
         self.log.debug("thing : {}".format(thing))
         if scene:
-            return self._can_handle_scene(scene, action, thing, entity, attribute)
+            return self._can_handle_scene(scene, action, thing, entity,
+                                          attribute)
 
         if not thing and not entity:
             return False, None
 
-        if thing and (thing not in _THING_TO_DOMAIN
-                or _THING_TO_DOMAIN[thing] not in self._client.domains()):
+        if thing and (thing not in _THING_TO_DOMAIN or
+                      _THING_TO_DOMAIN[thing] not in self._client.domains()):
             return False, None
 
         entity_id = self._get_entity_id(entity, action, attribute, thing)
@@ -310,24 +314,32 @@ class HomeAssistantSkill(CommonIoTSkill, FallbackSkill):
             if not thing:
                 thing = _DOMAIN_TO_THING.get(domain)
 
-            if not thing == _DOMAIN_TO_THING.get(domain) and not (domain == _CLIMATE and thing in _CLIMATE_THINGS):
+            if not thing == _DOMAIN_TO_THING.get(domain) and
+            not (domain == _CLIMATE and thing in _CLIMATE_THINGS):
                 return False, None
 
-        if value and thing not in {Thing.LIGHT} | _CLIMATE_THINGS:  # Only lights and heat/ac can handle a value
+        # Only lights and heat/ac can handle a value
+        if value and thing not in {Thing.LIGHT} | _CLIMATE_THINGS:
             return False, None
 
         if thing == Thing.LIGHT:
-            return self._can_handle_lights(action, attribute, entity_id, value=value)
+            return self._can_handle_lights(action, attribute, entity_id,
+                                           value=value)
 
         if thing == Thing.TEMPERATURE or thing == Thing.THERMOSTAT:
-            return self._can_handle_temperature(action, entity_id, value=value, attribute=attribute)
+            return self._can_handle_temperature(action, entity_id, value=value,
+                                                attribute=attribute)
 
         if thing == Thing.HEAT:
-            return self._can_handle_temperature(action, entity_id, attribute=attribute, target_key=_LOW, value=value)
+            return self._can_handle_temperature(action, entity_id,
+                                                attribute=attribute,
+                                                target_key=_LOW, value=value)
 
         if thing == Thing.AIR_CONDITIONING:
             action = self._invert_action(action)
-            return self._can_handle_temperature(action, entity_id, attribute=attribute, target_key=_HIGH, value=value)
+            return self._can_handle_temperature(action, entity_id,
+                                                attribute=attribute,
+                                                target_key=_HIGH, value=value)
 
         if thing == Thing.SWITCH:
             return self._can_handle_switch(action, entity_id, state)
@@ -348,7 +360,8 @@ class HomeAssistantSkill(CommonIoTSkill, FallbackSkill):
 
         return False, None
 
-    def _get_entity_id(self, entity: str, action: Action, attribute: Attribute, thing: Thing):
+    def _get_entity_id(self, entity: str, action: Action, attribute: Attribute,
+                       thing: Thing):
         possible_ids = self._entities.get(entity)
         if not possible_ids:
             return None
@@ -356,8 +369,9 @@ class HomeAssistantSkill(CommonIoTSkill, FallbackSkill):
         filtered_entities = []
         for id in possible_ids:
             domain_of_id = self._domain(id)
-            if action in _DOMAINS[domain_of_id][_ACTIONS] and \
-                    (not attribute or attribute in _DOMAINS[domain_of_id][_ATTRIBUTES]):
+            if action in _DOMAINS[domain_of_id][_ACTIONS] and
+            (not attribute or
+             attribute in _DOMAINS[domain_of_id][_ATTRIBUTES]):
                 if not thing or domain_of_id == _THING_TO_DOMAIN[thing]:
                     filtered_entities.append(id)
 
@@ -366,7 +380,7 @@ class HomeAssistantSkill(CommonIoTSkill, FallbackSkill):
             if num_matching_entities > 1:
                 LOGGER.warning("Multiple matching entities! Choosing to "
                                " ignore this request. Entities are: "
-                               " {entities}".format(entities=filtered_entities))
+                               "{entities}".format(entities=filtered_entities))
             return None
         return filtered_entities[0]
 
@@ -392,7 +406,8 @@ class HomeAssistantSkill(CommonIoTSkill, FallbackSkill):
     def _can_handle_switch(self, action, entity_id, state):
         if action in _SIMPLE_ACTIONS:
             return self._can_handle_simple(action, _SWITCH, entity_id)
-        if action in [Action.BINARY_QUERY] and state in [State.POWERED, State.UNPOWERED]:
+        if action in [Action.BINARY_QUERY] and
+        state in [State.POWERED, State.UNPOWERED]:
             return True, {'entity_id': entity_id, 'state': state.name}
         return False, None
 
@@ -423,7 +438,8 @@ class HomeAssistantSkill(CommonIoTSkill, FallbackSkill):
 
         return False, None
 
-    def _can_handle_lights(self, action: Action, attribute: Attribute, entity_id: str, value=None):
+    def _can_handle_lights(self, action: Action, attribute: Attribute,
+                           entity_id: str, value=None):
         if action in _SIMPLE_ACTIONS:
             return self._can_handle_simple(action, _LIGHT, entity_id)
 
@@ -432,9 +448,9 @@ class HomeAssistantSkill(CommonIoTSkill, FallbackSkill):
         if not entity_id:
             states = (s for s in states if s[_ENTITY_ID].startswith(_LIGHT))
 
-        if (action in {Action.INCREASE, Action.DECREASE}
-                or (action == Action.SET and value)
-                and attribute in {Attribute.BRIGHTNESS, None}):
+        if (action in {Action.INCREASE, Action.DECREASE} or
+           (action == Action.SET and value) and
+           attribute in {Attribute.BRIGHTNESS, None}):
             states = [s for s in states if _BRIGHTNESS in s[_ATTRIBUTES]]
 
             if not states:
@@ -442,7 +458,8 @@ class HomeAssistantSkill(CommonIoTSkill, FallbackSkill):
 
             if action == Action.SET:
                 states = [{_ENTITY_ID: s[_ENTITY_ID],
-                           _BRIGHTNESS: _get_value_from_percent(value, _MAX_BRIGHTNESS)}
+                           _BRIGHTNESS:
+                               _get_value_from_percent(value, _MAX_BRIGHTNESS)}
                           for s in states]
             else:
                 step = self._brightness_step if action == Action.INCREASE \
@@ -451,7 +468,7 @@ class HomeAssistantSkill(CommonIoTSkill, FallbackSkill):
                            _BRIGHTNESS: _adjust_brightness(s, step)}
                           for s in states]
 
-            return True, {_DOMAIN : _LIGHT,
+            return True, {_DOMAIN: _LIGHT,
                           _SERVICE: "turn_on",
                           _STATES: states}
 
@@ -463,7 +480,7 @@ class HomeAssistantSkill(CommonIoTSkill, FallbackSkill):
     def _can_handle_cover(self, action, entity_id):
         if action not in _DOMAINS[_COVER][_ACTIONS]:
             return False, None
-        service = None 
+        service = None
         if action in (Action.INCREASE, Action.UNLOCK):
             service = "open_cover"
         elif action in (Action.DECREASE, Action.LOCK):
@@ -478,14 +495,16 @@ class HomeAssistantSkill(CommonIoTSkill, FallbackSkill):
         data[_STATES] = states
         return True, data
 
-    def _can_handle_temperature(self, action: Action, entity_id: str, attribute: Attribute, target_key=_TEMPERATURE, value=None):
+    def _can_handle_temperature(self, action: Action, entity_id: str,
+                                attribute: Attribute, target_key=_TEMPERATURE,
+                                value=None):
         # TODO handle min/max temp values
         if (
-                action not in (Action.INCREASE, Action.DECREASE)
-                and not (action == Action.SET and value)
-                and not (action == Action.INFORMATION_QUERY
-                         and attribute == Attribute.TEMPERATURE
-                         and target_key == _TEMPERATURE)
+                action not in (Action.INCREASE, Action.DECREASE) and
+                not (action == Action.SET and value) and
+                not (action == Action.INFORMATION_QUERY and
+                     attribute == Attribute.TEMPERATURE and
+                     target_key == _TEMPERATURE)
         ):
             return False, None
 
@@ -502,24 +521,27 @@ class HomeAssistantSkill(CommonIoTSkill, FallbackSkill):
         if action == Action.INFORMATION_QUERY:
             if len(states) != 1:
                 return False, None
-            current_temperature = states[0]['attributes'].get('current_temperature')
+            current_temperature = states[0]['attributes'].get(
+                'current_temperature')
             if not current_temperature:
                 return False, None
             return True, {'dialog': 'temperature.query.response',
-                          'friendly_name': states[0]['attributes']['friendly_name'],
+                          'friendly_name':
+                          states[0]['attributes']['friendly_name'],
                           'temperature': current_temperature}
 
         if action == Action.SET:
             if not value:
                 return False, None
-            states = [self._set_temperature(s, value, target_key) for s in states]
+            states = [self._set_temperature(
+                s, value, target_key) for s in states]
         else:
             step = self._temperature_step if action == Action.INCREASE \
                 else -1 * self._temperature_step
 
             states = [_adjust_temperature(s, step, target_key) for s in states]
 
-        return True, {_DOMAIN : _CLIMATE,
+        return True, {_DOMAIN: _CLIMATE,
                       _SERVICE: "set_temperature",
                       _STATES: states}
 
@@ -527,12 +549,14 @@ class HomeAssistantSkill(CommonIoTSkill, FallbackSkill):
         attributes = current_state[_ATTRIBUTES]
 
         if target_key == _TEMPERATURE and not attributes.get(_TEMPERATURE):
-            data = {_HIGH:  value + self._temperature_step, _LOW: value - self._temperature_step}
+            data = {_HIGH:  value + self._temperature_step,
+                    _LOW: value - self._temperature_step}
         else:
             data = {target_key: value}
 
         if target_key == _HIGH and _LOW in attributes:
-            data[_LOW] = attributes[_LOW]  # homeassistant gives a 400 if we don't provide both
+            # homeassistant gives a 400 if we don't provide both
+            data[_LOW] = attributes[_LOW]
         if target_key == _LOW and _HIGH in attributes:
             data[_HIGH] = attributes[_HIGH]
 
@@ -544,7 +568,8 @@ class HomeAssistantSkill(CommonIoTSkill, FallbackSkill):
         utterance = message.data.get('utterance')
         answer = self._client.converse(utterance)
         if answer == "Sorry, I didn't understand that" or answer.endswith("?"):
-            LOGGER.info("Can't handle '{utterance}'".format(utterance=utterance))
+            LOGGER.info("Can't handle '{utterance}'".format(
+                utterance=utterance))
             return False
         self.speak(answer)
         LOGGER.info("Can handle '{utterance}'".format(utterance=utterance))
@@ -573,12 +598,14 @@ def _adjust_temperature(current_state, adjustment, target_key):
     attributes = current_state[_ATTRIBUTES]
 
     if target_key == _TEMPERATURE and not attributes.get(_TEMPERATURE):
-        data = {_HIGH: attributes[_HIGH] + adjustment, _LOW: attributes[_LOW] + adjustment}
+        data = {_HIGH: attributes[_HIGH] + adjustment,
+                _LOW: attributes[_LOW] + adjustment}
     else:
         data = {target_key: attributes[target_key] + adjustment}
 
     if target_key == _HIGH and _LOW in attributes:
-        data[_LOW] = attributes[_LOW]  # homeassistant gives a 400 if we don't provide both
+        # homeassistant gives a 400 if we don't provide both
+        data[_LOW] = attributes[_LOW]
     if target_key == _LOW and _HIGH in attributes:
         data[_HIGH] = attributes[_HIGH]
 
